@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ServioHub — Корпоративный портал знаний</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo" id="logo-btn" title="О портале">
+                <i class="fa-solid fa-layer-group"></i>
+                <span>Servio<b>Hub</b></span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#faq" class="nav-link active">База знаний и FAQ</a>
+                <a href="#ideas" class="nav-link">Банк идей</a>
+                <a href="#store" class="nav-link disabled" title="В разработке"><i class="fa-solid fa-store"></i> Мерч-шоп</a>
+            </nav>
+            <div class="user-profile" id="user-profile">
+                <!-- Заполняется JS -->
+                <button class="btn btn-outline" id="btn-login-header">Войти / Регистрация</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Секция Умного Поиска и FAQ -->
+        <section id="faq" class="section-container active-section">
+            <div class="section-header">
+                <h1>База знаний и FAQ</h1>
+                <p>Единый центр корпоративной экспертизы. Найдите ответ или задайте вопрос коллегам.</p>
+            </div>
+            
+            <div class="search-container">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="smart-search" placeholder="Задайте вопрос, например: Как оформить отпуск в 1С?">
+                </div>
+                <!-- Выпадающий список результатов -->
+                <div id="search-results" class="search-results hidden">
+                    <ul id="results-list"></ul>
+                    <div id="no-results" class="no-results hidden">
+                        <i class="fa-regular fa-face-frown-open"></i>
+                        <p>Мы не нашли точного ответа на ваш вопрос.</p>
+                        <button class="btn btn-primary" id="btn-publish-question" type="button">Опубликовать вопрос для коллег</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ideas-filters" id="faq-filters" style="margin-bottom: 20px;">
+                <button class="filter-btn active" data-filter="all" type="button">Все вопросы</button>
+                <button class="filter-btn" data-filter="my" type="button">Мои вопросы</button>
+            </div>
+
+            <div class="popular-tags" id="faq-tags-container">
+                <span class="tag-title">Популярные темы:</span>
+                <!-- Заполняется из базы -->
+            </div>
+
+            <h3 id="faq-list-title" class="faq-header-title">Все вопросы</h3>
+            <div class="faq-list">
+                <div id="faq-container">
+                    <!-- Заполняется из базы -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Секция Идей -->
+        <section id="ideas" class="section-container" style="display: none;">
+            <div class="section-header display-flex">
+                <div>
+                    <h1>Банк идей</h1>
+                    <p>Предлагайте улучшения, делитесь опытом и получайте баллы за реализованные идеи!</p>
+                </div>
+                <button class="btn btn-primary" id="btn-add-idea" type="button"><i class="fa-solid fa-plus"></i> Предложить идею</button>
+            </div>
+
+            <div class="search-container" style="margin-bottom: 20px;">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="idea-search" placeholder="Поиск по идеям...">
+                </div>
+            </div>
+
+            <div class="ideas-filters" id="ideas-status-filters">
+                <button class="filter-btn active" data-status="all" type="button">Все идеи</button>
+                <button class="filter-btn" data-status="my" type="button">Мои идеи</button>
+                <button class="filter-btn" data-status="vote" type="button">Сбор голосов</button>
+                <button class="filter-btn" data-status="review" type="button">На рассмотрении</button>
+                <button class="filter-btn" data-status="progress" type="button">В работе</button>
+                <button class="filter-btn" data-status="done" type="button">Реализовано</button>
+            </div>
+            
+            <div class="popular-tags hidden" id="idea-tags-container" style="margin-bottom: 20px;">
+                <span class="tag-title">Активный тег:</span>
+                <span class="tag active" id="active-idea-tag"></span>
+                <button class="btn-text" id="clear-idea-tag" type="button" style="margin-left: 10px; cursor: pointer; border: none; background: transparent; color: #EF4444; font-size: 13px;">Сбросить тег <i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="ideas-feed" id="ideas-container">
+                <!-- Заполняется JS -->
+            </div>
+        </section>
+
+        <!-- Секция Профиля -->
+        <section id="profile" class="section-container" style="display: none;">
+            <div class="profile-header">
+                <div class="profile-avatar-large">
+                    <img id="profile-img" src="" alt="Ваш аватар">
+                    <div class="upload-avatar-overlay" id="upload-avatar-btn">
+                        <i class="fa-solid fa-camera"></i> Сменить
+                    </div>
+                    <input type="file" id="avatar-input" accept="image/*" class="hidden">
+                </div>
+                <div class="profile-title">
+                    <h1 id="profile-name">Имя пользователя</h1>
+                    <p class="points-badge"><i class="fa-solid fa-coins"></i> <span id="profile-points">0</span> баллов</p>
+                </div>
+            </div>
+
+            <div class="profile-tabs">
+                <button class="profile-tab active" data-tab="my-faqs" type="button">Ваши вопросы</button>
+                <button class="profile-tab" data-tab="my-ideas" type="button">Ваши идеи</button>
+                <button class="profile-tab" data-tab="my-points" type="button">История начислений</button>
+            </div>
+
+            <div class="profile-tab-content active" id="tab-my-faqs">
+                <div class="faq-list">
+                    <div id="my-faqs-container"></div>
+                </div>
+            </div>
+
+            <div class="profile-tab-content" id="tab-my-ideas" style="display:none;">
+                <div class="ideas-feed" id="my-ideas-container"></div>
+            </div>
+
+            <div class="profile-tab-content" id="tab-my-points" style="display:none;">
+                <div class="points-history" id="my-points-container"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Модальное окно авторизации/регистрации -->
+    <div class="modal-overlay hidden" id="auth-modal">
+        <div class="modal">
+            <button class="close-modal" type="button"><i class="fa-solid fa-xmark"></i></button>
+            <div class="modal-header">
+                <h2 id="auth-title">Вход на портал</h2>
+            </div>
+            <form id="auth-form">
+                <div class="form-group">
+                    <label>Логин</label>
+                    <input type="text" id="auth-username" required>
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" id="auth-password" required>
+                </div>
+                <div class="form-group hidden" id="auth-password-confirm-group">
+                    <label>Повторите пароль</label>
+                    <input type="password" id="auth-password-confirm">
+                </div>
+                <p id="auth-error" class="error-msg hidden"></p>
+                <button type="submit" class="btn btn-primary btn-block" id="auth-submit">Войти</button>
+                <p class="auth-switch">Нет аккаунта? <a href="#" id="switch-to-register">Зарегистрироваться</a></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления -->
+    <div class="modal-overlay hidden" id="add-modal">
+        <div class="modal">
+            <button class="close-modal" type="button"><i class="fa-solid fa-xmark"></i></button>
+            <div class="modal-header">
+                <h2 id="add-modal-title">Задать вопрос</h2>
+            </div>
+            <form id="add-form">
+                <input type="hidden" id="edit-item-id">
+                <div class="form-group">
+                    <label id="add-label-1">Вопрос / Заголовок</label>
+                    <input type="text" id="add-title" maxlength="100" required>
+                    <div class="field-footer">
+                        <span class="field-error hidden">Поле не может быть пустым</span>
+                        <small class="hint char-counter" id="add-title-counter">0 / 100</small>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label id="add-label-2">Ответ / Описание</label>
+                    <textarea id="add-desc" rows="4" maxlength="1000" required></textarea>
+                    <div class="field-footer">
+                        <span class="field-error hidden">Поле не может быть пустым</span>
+                        <small class="hint char-counter" id="add-desc-counter">0 / 1000</small>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Тег(и)</label>
+                    <input type="text" id="add-tag" placeholder="Например: React, Оформление отпуска">
+                    <small class="hint">Указывайте теги через запятую (например: HR, Отпуск)</small>
+                </div>
+                <div id="existing-images-preview" class="attached-images" style="margin-bottom: 10px;"></div>
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label>Прикрепить скриншоты / фото (до 5 шт.)</label>
+                    <input type="file" id="add-images" accept="image/*" multiple>
+                </div>
+                <button type="submit" id="add-submit-btn" class="btn btn-primary btn-block">Опубликовать</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно Админа для изменения статуса идеи -->
+    <div class="modal-overlay hidden" id="admin-modal">
+        <div class="modal">
+            <button class="close-modal" type="button"><i class="fa-solid fa-xmark"></i></button>
+            <div class="modal-header">
+                <h2>Панель администратора</h2>
+            </div>
+            <form id="admin-form">
+                <input type="hidden" id="admin-idea-id">
+                <div class="form-group">
+                    <label>Новый статус идеи</label>
+                    <select id="admin-status-select" style="width: 100%; padding: 12px; border-radius: 8px;">
+                        <option value="vote">Сбор голосов</option>
+                        <option value="review">На рассмотрении</option>
+                        <option value="progress">В работе</option>
+                        <option value="done">Реализовано</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Итоговое количество баллов за идею</label>
+                    <input type="number" id="admin-points" placeholder="Например: 500" value="0">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Применить изменения</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно "О портале" -->
+    <div class="modal-overlay hidden" id="about-modal">
+        <div class="modal">
+            <button class="close-modal" type="button"><i class="fa-solid fa-xmark"></i></button>
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-layer-group" style="color: var(--primary-color);"></i> О ServioHub</h2>
+            </div>
+            <p class="about-text"><b>ServioHub</b> — это внутренний корпоративный портал знаний, созданный для обмена опытом, идеями и важной информацией между сотрудниками компании.</p>
+            <p class="about-text">Здесь вы можете найти ответы на частые вопросы (FAQ), задать свой вопрос коллегам, а также предложить идею по улучшению рабочих процессов.</p>
+            <p class="about-text">Активные участники получают баллы за реализованные идеи, которые в будущем можно будет обменять на эксклюзивный мерч!</p>
+            <button class="btn btn-primary btn-block close-modal-btn" style="margin-top: 15px;" type="button">Понятно</button>
+        </div>
+    </div>
+
+    <!-- Контейнер для уведомлений (Toasts) -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
