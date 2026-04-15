@@ -10,6 +10,8 @@ let currentFaqFilter = 'all';
 let currentFaqTag = null;
 let currentIdeaTag = null;
 let currentIdeaStatus = 'all';
+let currentIdeaSort = 'votes';
+let currentIdeaAuthor = 'all';
 let existingImages = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -192,10 +194,17 @@ function renderFAQs() {
         let actionsHtml = '';
         if (currentUser && (currentUser.username === faq.asked_by || currentUser.username === 'admin')) {
             actionsHtml = `
-                <div class="item-actions">
+                <div class="item-actions" style="margin-left: auto; display: flex; gap: 5px;">
                     <button type="button" class="btn-icon" onclick="editItem('faq', ${faq.id})" title="Редактировать"><i class="fa-solid fa-pen"></i></button>
                     <button type="button" class="btn-icon text-danger" onclick="deleteItem('faq', ${faq.id})" title="Удалить"><i class="fa-solid fa-trash"></i></button>
                 </div>`;
+        }
+
+        let adminAnswerBtn = '';
+        if (currentUser && currentUser.username === 'admin') {
+            const btnText = (faq.answered_by === 'Ожидает ответа') ? '<i class="fa-solid fa-reply"></i> Ответить' : '<i class="fa-solid fa-pen-to-square"></i> Изменить ответ';
+            const btnClass = (faq.answered_by === 'Ожидает ответа') ? 'btn btn-primary' : 'btn btn-outline';
+            adminAnswerBtn = `<button type="button" class="${btnClass}" style="padding: 4px 10px; font-size: 12px; margin-left: 15px;" onclick="editItem('faq', ${faq.id})">${btnText}</button>`;
         }
 
         list.innerHTML += `
@@ -203,11 +212,12 @@ function renderFAQs() {
                 <div class="faq-question">${faq.question}</div>
                 <div class="faq-answer">${faq.answer}</div>
                 ${generateImagesHTML(faq.images)}
-                <div class="faq-meta">
+                <div class="faq-meta" style="display: flex; align-items: center; flex-wrap: wrap;">
                     ${tagsHtml}
                     <span class="author">${answeredIcon} Ответил: ${faq.answered_by}</span>
                     <span class="author" style="margin-left: 10px; font-size: 12px; opacity: 0.7;">(Спросил: ${faq.asked_by})</span>
                     <span class="author" style="margin-left: 10px; font-size: 12px;">${faq.date}</span>
+                    ${adminAnswerBtn}
                     ${actionsHtml}
                 </div>
             </div>
@@ -315,6 +325,8 @@ async function fetchIdeas() {
     try {
         const res = await fetch(`${API_URL}/ideas`);
         ideas = await res.json();
+        renderTopAuthors();
+        setupIdeaSorting();
         renderIdeas();
         setupIdeaSearch();
     } catch(e) {}
@@ -324,6 +336,13 @@ function renderIdeas(containerId = 'ideas-container', hideAdmin = false) {
     const list = document.getElementById(containerId);
     if (!list) return;
     list.innerHTML = '';
+
+    if (typeof list.animate === 'function') {
+        list.animate([
+            { opacity: 0, transform: 'translateY(15px)' },
+            { opacity: 1, transform: 'translateY(0)' }
+        ], { duration: 400, easing: 'ease-out' });
+    }
 
     const searchInput = document.getElementById('idea-search');
     const searchQuery = searchInput ? searchInput.value.toLowerCase() : '';
@@ -337,6 +356,7 @@ function renderIdeas(containerId = 'ideas-container', hideAdmin = false) {
                 if (!currentUser || idea.author !== currentUser.username) match = false;
             } else if (currentIdeaStatus !== 'all' && idea.status !== currentIdeaStatus) match = false;
             if (currentIdeaTag && !idea.tags.includes(currentIdeaTag)) match = false;
+            if (currentIdeaAuthor !== 'all' && idea.author !== currentIdeaAuthor) match = false;
             if (searchQuery && !(idea.title.toLowerCase().includes(searchQuery) || idea.desc.toLowerCase().includes(searchQuery))) match = false;
             return match;
         });
@@ -349,6 +369,30 @@ function renderIdeas(containerId = 'ideas-container', hideAdmin = false) {
     } else {
         
         filtered = ideas.filter(i => i.author === currentUser.username);
+    }
+
+    if (containerId === 'ideas-container') {
+        const authorCounts = {};
+        ideas.forEach(i => {
+            authorCounts[i.author] = (authorCounts[i.author] || 0) + 1;
+        });
+
+        filtered.sort((a, b) => {
+            if (currentIdeaSort === 'votes') {
+                if (b.votes === a.votes) return b.id - a.id;
+                return b.votes - a.votes;
+            } else if (currentIdeaSort === 'date_new') {
+                return b.id - a.id;
+            } else if (currentIdeaSort === 'date_old') {
+                return a.id - b.id;
+            } else if (currentIdeaSort === 'author_top') {
+                const countDiff = authorCounts[b.author] - authorCounts[a.author];
+                if (countDiff !== 0) return countDiff;
+                if (b.votes === a.votes) return b.id - a.id;
+                return b.votes - a.votes;
+            }
+            return 0;
+        });
     }
 
     if (filtered.length === 0) { list.innerHTML = '<p class="no-results">Идей не найдено.</p>'; return; }
@@ -382,6 +426,11 @@ function renderIdeas(containerId = 'ideas-container', hideAdmin = false) {
         const isAdmin = currentUser && currentUser.username === 'admin';
         const adminBtnHtml = (isAdmin && !hideAdmin) ? `<button class="btn btn-outline admin-action" onclick="showAdminModal(${idea.id}, '${idea.status}', ${idea.points_awarded || 0})" type="button"><i class="fa-solid fa-gear"></i> Управление</button>` : '';
 
+        let dateHtml = `<span class="date" title="Дата публикации"><i class="fa-regular fa-calendar"></i> ${idea.date}</span>`;
+        if (idea.status === 'done' && idea.done_date) {
+            dateHtml += `<span class="date done-date" title="Дата реализации" style="margin-left: 10px; color: var(--status-done); font-weight: 500;"><i class="fa-solid fa-calendar-check"></i> Реализовано: ${idea.done_date}</span>`;
+        }
+
        
         let actionsHtml = '';
         const isAuthor = currentUser && currentUser.username === idea.author;
@@ -413,8 +462,8 @@ function renderIdeas(containerId = 'ideas-container', hideAdmin = false) {
                     ${generateImagesHTML(idea.images)}
                     <div class="idea-meta">
                         ${tagsHtml}
-                        <span class="author">Автор: ${idea.author}</span>
-                        <span class="date">${idea.date}</span>
+                        <span class="author idea-author-clickable" data-author="${idea.author}" style="cursor:pointer; text-decoration:underline;" title="Показать идеи автора">Автор: ${idea.author}</span>
+                        ${dateHtml}
                         ${actionsHtml}
                     </div>
                 </div>
@@ -426,6 +475,16 @@ function renderIdeas(containerId = 'ideas-container', hideAdmin = false) {
         document.querySelectorAll('#' + containerId + ' .idea-tag-clickable').forEach(el => {
             el.addEventListener('click', (e) => {
                 currentIdeaTag = e.target.getAttribute('data-tag');
+                renderIdeas();
+            });
+        });
+
+        document.querySelectorAll('#' + containerId + ' .idea-author-clickable').forEach(el => {
+            el.addEventListener('click', (e) => {
+                currentIdeaAuthor = e.target.getAttribute('data-author');
+                const select = document.getElementById('idea-author-select');
+                if (select) select.value = currentIdeaAuthor;
+                renderTopAuthors();
                 renderIdeas();
             });
         });
@@ -456,7 +515,122 @@ function renderIdeas(containerId = 'ideas-container', hideAdmin = false) {
     });
 }
 
+function renderTopAuthors() {
+    const authorCounts = {};
+    ideas.forEach(i => {
+        authorCounts[i.author] = (authorCounts[i.author] || 0) + 1;
+    });
+
+    const sortedAuthors = Object.entries(authorCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    if (sortedAuthors.length === 0) return;
+
+    let topBlock = document.getElementById('top-authors-block');
+    if (!topBlock) {
+        topBlock = document.createElement('div');
+        topBlock.id = 'top-authors-block';
+        topBlock.style.margin = '20px 0';
+        topBlock.style.padding = '15px';
+        topBlock.style.background = 'var(--bg-secondary, #f8fafc)';
+        topBlock.style.borderRadius = '8px';
+        topBlock.style.border = '1px solid var(--border-color, #e2e8f0)';
+
+        const ideasContainer = document.getElementById('ideas-container');
+        if (ideasContainer && ideasContainer.parentNode) {
+            ideasContainer.parentNode.insertBefore(topBlock, ideasContainer);
+        }
+    }
+
+    if (topBlock) {
+        topBlock.innerHTML = `
+            <h3 style="margin-top:0; margin-bottom:15px; font-size:16px; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-trophy" style="color:#fbbf24;"></i> Топ авторов идей
+            </h3>
+            <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                ${sortedAuthors.map((a, i) => {
+                    const isActive = a[0] === currentIdeaAuthor;
+                    const bg = isActive ? '#e0f2fe' : 'var(--bg-primary, #fff)';
+                    const border = isActive ? '#3b82f6' : 'var(--border-color, #cbd5e1)';
+                    return `
+                    <div class="top-author-clickable" data-author="${a[0]}" style="background:${bg}; padding:6px 12px; border-radius:20px; border:1px solid ${border}; font-size:13px; display:flex; align-items:center; gap:6px; box-shadow:0 1px 2px rgba(0,0,0,0.05); cursor:pointer; transition:0.2s;" title="Показать идеи автора">
+                        <span style="font-weight:bold; color:var(--text-main, #333); pointer-events:none;">${i + 1}. ${a[0]}</span> 
+                        <span style="opacity:0.6; font-size:12px; pointer-events:none;">${a[1]} идей</span>
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+
+        topBlock.querySelectorAll('.top-author-clickable').forEach(el => {
+            el.addEventListener('click', (e) => {
+                const author = e.currentTarget.getAttribute('data-author');
+                currentIdeaAuthor = (currentIdeaAuthor === author) ? 'all' : author;
+                const select = document.getElementById('idea-author-select');
+                if (select) select.value = currentIdeaAuthor;
+                renderTopAuthors();
+                renderIdeas();
+            });
+        });
+    }
+}
+
+function setupIdeaSorting() {
+    let sortBlock = document.getElementById('idea-sort-block');
+    if (!sortBlock) {
+        sortBlock = document.createElement('div');
+        sortBlock.id = 'idea-sort-block';
+        sortBlock.style.marginBottom = '15px';
+        sortBlock.style.display = 'flex';
+        sortBlock.style.alignItems = 'center';
+        sortBlock.style.gap = '10px';
+        sortBlock.style.flexWrap = 'wrap';
+        
+        sortBlock.innerHTML = `
+            <label for="idea-sort-select" style="font-weight:bold;">Сортировка:</label>
+            <select id="idea-sort-select" style="padding:8px; border-radius:5px; border:1px solid var(--border-color, #cbd5e1); background: var(--bg-primary, #fff); color: var(--text-main, #000); outline: none;">
+                <option value="votes">По лучшим оценкам</option>
+                <option value="date_new">По дате (сначала новые)</option>
+                <option value="date_old">По дате (сначала старые)</option>
+                <option value="author_top">По авторам (у кого больше идей)</option>
+            </select>
+
+            <label for="idea-author-select" style="font-weight:bold; margin-left:10px;">Автор:</label>
+            <select id="idea-author-select" style="padding:8px; border-radius:5px; border:1px solid var(--border-color, #cbd5e1); background: var(--bg-primary, #fff); color: var(--text-main, #000); outline: none;">
+                <option value="all">Все авторы</option>
+            </select>
+        `;
+        
+        const topBlock = document.getElementById('top-authors-block');
+        const ideasContainer = document.getElementById('ideas-container');
+        
+        if (topBlock && topBlock.parentNode) {
+            topBlock.parentNode.insertBefore(sortBlock, topBlock.nextSibling);
+        } else if (ideasContainer && ideasContainer.parentNode) {
+            ideasContainer.parentNode.insertBefore(sortBlock, ideasContainer);
+        }
+
+        document.getElementById('idea-sort-select').addEventListener('change', (e) => {
+            currentIdeaSort = e.target.value;
+            renderIdeas();
+        });
+        document.getElementById('idea-author-select').addEventListener('change', (e) => {
+            currentIdeaAuthor = e.target.value;
+            renderTopAuthors();
+            renderIdeas();
+        });
+    }
+
+    const authorSelect = document.getElementById('idea-author-select');
+    if (authorSelect && ideas.length > 0) {
+        const uniqueAuthors = [...new Set(ideas.map(i => i.author))].sort();
+        const currentValue = currentIdeaAuthor;
+        authorSelect.innerHTML = '<option value="all">Все авторы</option>' + 
+            uniqueAuthors.map(a => `<option value="${a}">${a}</option>`).join('');
+        authorSelect.value = uniqueAuthors.includes(currentValue) ? currentValue : 'all';
+    }
+}
+
 function setupIdeaSearch() {
+    setupIdeaSorting();
     document.getElementById('idea-search').addEventListener('input', () => renderIdeas());
     document.querySelectorAll('#ideas-status-filters .filter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -527,6 +701,7 @@ function setupAuth() {
                     updateHeader();
                     fetchVotes(); 
                     fetchIdeas();
+                    fetchFAQs();
                 }
             }
         } catch(e) { console.error(e); }
@@ -553,7 +728,26 @@ function showItemModal(mode, title = '') {
     document.getElementById('add-modal').classList.remove('hidden');
     document.getElementById('add-modal-title').textContent = mode === 'faq' ? 'Задать вопрос' : 'Предложить идею';
     document.getElementById('add-label-1').textContent = mode === 'faq' ? 'Ваш вопрос' : 'Заголовок идеи';
-    document.getElementById('add-label-2').textContent = mode === 'faq' ? 'Дополнительные детали/Описание' : 'Описание идеи';
+    
+    const isAdmin = currentUser && currentUser.username === 'admin';
+    const descGroup = document.getElementById('add-desc').parentElement;
+    
+    if (mode === 'faq') {
+        if (isAdmin) {
+            descGroup.style.display = 'block';
+            document.getElementById('add-label-2').textContent = 'Ответ на вопрос (Только для админа)';
+            document.getElementById('add-desc').removeAttribute('required');
+        } else {
+            descGroup.style.display = 'none';
+            document.getElementById('add-desc').value = '';
+            document.getElementById('add-desc').removeAttribute('required');
+        }
+    } else {
+        descGroup.style.display = 'block';
+        document.getElementById('add-label-2').textContent = 'Описание идеи';
+        document.getElementById('add-desc').setAttribute('required', 'true');
+    }
+
     document.getElementById('add-submit-btn').textContent = 'Опубликовать';
     
     document.getElementById('edit-item-id').value = '';
@@ -708,13 +902,16 @@ function updateCharCounters() {
     const tCounter = document.getElementById('add-title-counter');
     const dCounter = document.getElementById('add-desc-counter');
     
+    if (title) title.setAttribute('maxlength', '250');
+    if (desc) desc.setAttribute('maxlength', '3000');
+
     if (title && tCounter) {
-        tCounter.textContent = `${title.value.length} / 100`;
-        tCounter.style.color = title.value.length >= 100 ? '#DC2626' : 'var(--text-muted)';
+        tCounter.textContent = `${title.value.length} / 250`;
+        tCounter.style.color = title.value.length >= 250 ? '#DC2626' : 'var(--text-muted)';
     }
     if (desc && dCounter) {
-        dCounter.textContent = `${desc.value.length} / 1000`;
-        dCounter.style.color = desc.value.length >= 1000 ? '#DC2626' : 'var(--text-muted)';
+        dCounter.textContent = `${desc.value.length} / 3000`;
+        dCounter.style.color = desc.value.length >= 3000 ? '#DC2626' : 'var(--text-muted)';
     }
 }
 
@@ -744,6 +941,13 @@ function editItem(type, id) {
     document.getElementById('edit-item-id').value = item.id;
     document.getElementById('add-title').value = type === 'faq' ? item.question : item.title;
     document.getElementById('add-desc').value = type === 'faq' ? item.answer : item.desc;
+    
+    if (type === 'faq' && currentUser && currentUser.username === 'admin') {
+        if (item.answer === 'Ожидает ответа' || item.answer === 'Ожидает ответа...') {
+            document.getElementById('add-desc').value = '';
+        }
+    }
+
     document.getElementById('add-tag').value = item.tags;
     document.getElementById('add-submit-btn').textContent = 'Сохранить изменения';
     existingImages = [...(item.images || [])];
