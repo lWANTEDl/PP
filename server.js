@@ -12,13 +12,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// Создаем папку uploads если её нет
+
 if (!fs.existsSync('./uploads')) {
     fs.mkdirSync('./uploads');
 }
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Настройка Multer для картинок
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/');
@@ -32,7 +32,7 @@ const upload = multer({ storage });
 
 const SECRET_KEY = "serviohub_secret_key_123";
 
-// Инициализация новой базы данных (v2 для новой схемы)
+
 const db = new sqlite3.Database('./database_v2.sqlite', (err) => {
     if (err) console.error(err.message);
     else {
@@ -73,8 +73,8 @@ const db = new sqlite3.Database('./database_v2.sqlite', (err) => {
                 date TEXT
             )`);
             
-            // Попытка добавить колонку, если таблица уже существовала до обновления
-            db.run(`ALTER TABLE ideas ADD COLUMN points_awarded INTEGER DEFAULT 0`, (err) => { /* Игнорируем ошибку, если колонка уже есть */ });
+            
+            db.run(`ALTER TABLE ideas ADD COLUMN points_awarded INTEGER DEFAULT 0`, (err) => {});
 
             db.run(`CREATE TABLE IF NOT EXISTS votes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,13 +92,13 @@ const db = new sqlite3.Database('./database_v2.sqlite', (err) => {
                 date TEXT
             )`);
 
-            // Seed Users
+            
             const insertUser = db.prepare(`INSERT OR IGNORE INTO users (username, password, points, is_expert, expert_tag) VALUES (?, ?, ?, ?, ?)`);
             insertUser.run('wanted', bcrypt.hashSync('wanted', 10), 1250, 1, 'React');
             insertUser.run('admin', bcrypt.hashSync('admin', 10), 9999, 1, 'Администрирование');
             insertUser.finalize();
 
-            // Seed FAQs
+           
             db.get("SELECT COUNT(*) as count FROM faqs", (err, row) => {
                 if (row.count === 0) {
                     const stmt = db.prepare("INSERT INTO faqs (question, answer, tags, asked_by, answered_by, status, date) VALUES (?, ?, ?, ?, ?, ?, ?)");
@@ -119,7 +119,7 @@ const db = new sqlite3.Database('./database_v2.sqlite', (err) => {
                 }
             });
 
-            // Seed Ideas
+            
             db.get("SELECT COUNT(*) as count FROM ideas", (err, row) => {
                 if (row.count === 0) {
                     const stmt = db.prepare("INSERT INTO ideas (title, desc, tags, author, status, votes, date) VALUES (?, ?, ?, ?, ?, ?, ?)");
@@ -138,14 +138,14 @@ const db = new sqlite3.Database('./database_v2.sqlite', (err) => {
                     ideasData.forEach(i => stmt.run(i));
                     stmt.finalize();
                 }
-                // Миграция: начисляем баллы (минимум 500) уже реализованным идеям
+                
                 db.run(`UPDATE ideas SET points_awarded = CASE WHEN LENGTH(desc) > 60 THEN 1000 ELSE 500 END WHERE status = 'done' AND (points_awarded IS NULL OR points_awarded = 0)`);
             });
         });
     }
 });
 
-// Middleware
+
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -158,13 +158,13 @@ function authenticateToken(req, res, next) {
     });
 }
 
-// Загрузка фото API
+
 app.post('/api/upload', authenticateToken, upload.array('images', 5), (req, res) => {
     const urls = req.files.map(f => `/uploads/${f.filename}`);
     res.json({ urls });
 });
 
-// АВТОРИЗАЦИЯ
+
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: "Заполните все поля" });
@@ -186,7 +186,7 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-// ПРОФИЛЬ
+
 app.get('/api/profile/:username', authenticateToken, (req, res) => {
     const { username } = req.params;
     db.get(`SELECT id, username, points, is_expert, expert_tag, avatar_url FROM users WHERE username = ?`, [username], (err, user) => {
@@ -210,7 +210,7 @@ app.post('/api/profile', authenticateToken, (req, res) => {
     });
 });
 
-// FAQ
+
 app.get('/api/faqs', (req, res) => {
     db.all(`SELECT * FROM faqs WHERE status != 'draft' ORDER BY id DESC`, [], (err, rows) => {
         res.json(rows.map(r => ({...r, images: r.images ? JSON.parse(r.images) : []})));
@@ -227,7 +227,7 @@ app.post('/api/faqs', authenticateToken, (req, res) => {
     });
 });
 
-// Удаление FAQ
+
 app.delete('/api/faqs/:id', authenticateToken, (req, res) => {
     const { id } = req.params;
     db.get(`SELECT asked_by FROM faqs WHERE id = ?`, [id], (err, row) => {
@@ -241,7 +241,7 @@ app.delete('/api/faqs/:id', authenticateToken, (req, res) => {
     });
 });
 
-// Редактирование FAQ
+
 app.put('/api/faqs/:id', authenticateToken, (req, res) => {
     const { id } = req.params;
     const { question, answer, tags, images } = req.body;
@@ -256,7 +256,7 @@ app.put('/api/faqs/:id', authenticateToken, (req, res) => {
     });
 });
 
-// ИДЕИ
+
 app.get('/api/ideas', (req, res) => {
     db.all(`SELECT * FROM ideas ORDER BY votes DESC, id DESC`, [], (err, rows) => {
         res.json(rows.map(r => ({...r, images: r.images ? JSON.parse(r.images) : []})));
@@ -273,7 +273,7 @@ app.post('/api/ideas', authenticateToken, (req, res) => {
     });
 });
 
-// Удаление Идеи
+
 app.delete('/api/ideas/:id', authenticateToken, (req, res) => {
     const { id } = req.params;
     db.get(`SELECT author FROM ideas WHERE id = ?`, [id], (err, row) => {
@@ -287,7 +287,7 @@ app.delete('/api/ideas/:id', authenticateToken, (req, res) => {
     });
 });
 
-// Редактирование Идеи
+
 app.put('/api/ideas/:id', authenticateToken, (req, res) => {
     const { id } = req.params;
     const { title, desc, tags, images } = req.body;
@@ -302,17 +302,16 @@ app.put('/api/ideas/:id', authenticateToken, (req, res) => {
     });
 });
 
-// ГОЛОСОВАНИЕ
+
 app.post('/api/ideas/:id/vote', authenticateToken, (req, res) => {
     const { id } = req.params;
-    const { type } = req.body; // 'up', 'down'
+    const { type } = req.body; 
     const change = type === 'up' ? 1 : -1;
     const userId = req.user.id;
 
     db.get(`SELECT vote_type FROM votes WHERE user_id = ? AND idea_id = ?`, [userId, id], (err, existingVote) => {
         if (existingVote) {
              if (existingVote.vote_type === type) {
-                 // Если голос совпадает — отменяем его
                  const revertChange = type === 'up' ? -1 : 1;
                  db.run(`DELETE FROM votes WHERE user_id = ? AND idea_id = ?`, [userId, id]);
                  db.run(`UPDATE ideas SET votes = votes + ? WHERE id = ?`, [revertChange, id]);
@@ -321,8 +320,7 @@ app.post('/api/ideas/:id/vote', authenticateToken, (req, res) => {
                  }, 50);
                  return;
              } else {
-                 // Меняем голос (если был down, стал up -> +2)
-                 const totalChange = type === 'up' ? 2 : -2;
+                   const totalChange = type === 'up' ? 2 : -2;
                  db.run(`UPDATE votes SET vote_type = ? WHERE user_id = ? AND idea_id = ?`, [type, userId, id]);
                  db.run(`UPDATE ideas SET votes = votes + ? WHERE id = ?`, [totalChange, id]);
              }
@@ -336,7 +334,7 @@ app.post('/api/ideas/:id/vote', authenticateToken, (req, res) => {
     });
 });
 
-// НАЧИСЛЕНИЕ БАЛЛОВ АДМИНОМ И СМЕНА СТАТУСА ИДЕИ
+
 app.post('/api/admin/ideas/:id', authenticateToken, (req, res) => {
     if (req.user.username !== 'admin') return res.status(403).json({ error: "Только для админа" });
     const { id } = req.params;
@@ -365,7 +363,6 @@ app.post('/api/admin/ideas/:id', authenticateToken, (req, res) => {
     });
 });
 
-// Проверка голоса пользователя (чтобы подсветить стрелки при загрузке)
 app.get('/api/votes/:userId', authenticateToken, (req, res) => {
     db.all(`SELECT idea_id, vote_type FROM votes WHERE user_id = ?`, [req.user.id], (err, rows) => {
         res.json(rows || []);

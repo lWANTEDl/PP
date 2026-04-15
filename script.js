@@ -3,7 +3,7 @@ let currentUser = JSON.parse(localStorage.getItem('user'));
 let token = localStorage.getItem('token');
 let myVotesData = [];
 
-// Состояние
+
 let faqs = [];
 let ideas = [];
 let currentFaqFilter = 'all';
@@ -19,12 +19,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupModals();
     setupProfile();
     
-    // Загрузка
+   
     await fetchVotes();
     await fetchFAQs();
     await fetchIdeas();
 
-    // Убираем визуализацию ошибки (красную рамку), как только пользователь начинает ввод
+  
     document.addEventListener('input', (e) => {
         if (e.target.classList.contains('validation-error')) {
             e.target.classList.remove('validation-error');
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-// Система уведомлений (Toasts)
+
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -47,7 +47,7 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// Навигация
+
 function setupNavigation() {
     const navLinks = document.querySelectorAll('.nav-link:not(.disabled)');
     const sections = document.querySelectorAll('.section-container');
@@ -61,23 +61,20 @@ function setupNavigation() {
             const targetId = link.getAttribute('href').substring(1);
             sections.forEach(sec => sec.style.display = sec.id === targetId ? 'block' : 'none');
             
-            // Если перешли в профиль, загружаем данные
+           
             if (targetId === 'profile' && token) {
                 loadProfileStats();
             }
         });
     });
 
-    // Фикс случайного сброса формы на FAQ (отключаем submit дефолт на модалках)
-    // предотвращение уже добавлено в setupModals() - (e).preventDefault()
-
-    // Обработка клика по логотипу для вызова модального окна "О портале"
+    
     document.getElementById('logo-btn').addEventListener('click', () => {
         document.getElementById('about-modal').classList.remove('hidden');
     });
 }
 
-// Ручная навигация в профиль (вызывается из выпадающего меню)
+
 function showProfileSection() {
     document.querySelectorAll('.section-container').forEach(s => s.style.display = 'none');
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
@@ -85,7 +82,7 @@ function showProfileSection() {
     if (token) loadProfileStats();
 }
 
-// Загрузка голосов
+
 async function fetchVotes() {
     if (!token || !currentUser) return;
     try {
@@ -118,7 +115,7 @@ function updateHeader() {
             </div>
         `;
 
-        // Логика дропдауна
+        
         const dropdown = document.getElementById('profile-dropdown');
         document.getElementById('avatar-btn').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -154,7 +151,7 @@ function logout() {
     }
 }
 
-// FAQ
+
 async function fetchFAQs() {
     try {
         const res = await fetch(`${API_URL}/faqs`);
@@ -186,12 +183,12 @@ function renderFAQs() {
     if (filtered.length === 0) { list.innerHTML = '<p class="no-results">Ничего не найдено.</p>'; return; }
 
     filtered.forEach(faq => {
-        // Теги могут быть строкой через запятую. Парсим.
+        
         const tagsArr = faq.tags.split(',').map(t => t.trim()).filter(Boolean);
         const tagsHtml = tagsArr.map(t => `<span class="tag faq-tag-clickable" data-tag="${t}">${t}</span>`).join('');
 
         const answeredIcon = faq.answered_by === 'Ожидает ответа' ? '<i class="fa-regular fa-clock"></i>' : '<i class="fa-solid fa-check-circle expert-check"></i>';
-        // Кнопки управления (если автор или админ)
+       
         let actionsHtml = '';
         if (currentUser && (currentUser.username === faq.asked_by || currentUser.username === 'admin')) {
             actionsHtml = `
@@ -313,7 +310,7 @@ function setupFAQSearch() {
     });
 }
 
-// Идеи
+
 async function fetchIdeas() {
     try {
         const res = await fetch(`${API_URL}/ideas`);
@@ -350,7 +347,7 @@ function renderIdeas(containerId = 'ideas-container', hideAdmin = false) {
             document.getElementById('active-idea-tag').textContent = currentIdeaTag;
         } else tagBlock.classList.add('hidden');
     } else {
-        // Для вкладки "Мои идеи" в профиле
+        
         filtered = ideas.filter(i => i.author === currentUser.username);
     }
 
@@ -368,11 +365,11 @@ function renderIdeas(containerId = 'ideas-container', hideAdmin = false) {
         const tagsArr = idea.tags.split(',').map(t => t.trim()).filter(Boolean);
         const tagsHtml = tagsArr.map(t => `<span class="tag idea-tag-clickable" data-tag="${t}">${t}</span>`).join('');
         
-        // Подсвечиваем голоса пользователя
+        
         let myVote = false;
         if (currentUser) {
             const vData = myVotesData.find(v => v.idea_id === idea.id);
-            if (vData) myVote = vData.vote_type; // 'up' или 'down'
+            if (vData) myVote = vData.vote_type; 
         }
 
         let pointsBadgeHtml = '';
@@ -385,7 +382,7 @@ function renderIdeas(containerId = 'ideas-container', hideAdmin = false) {
         const isAdmin = currentUser && currentUser.username === 'admin';
         const adminBtnHtml = (isAdmin && !hideAdmin) ? `<button class="btn btn-outline admin-action" onclick="showAdminModal(${idea.id}, '${idea.status}', ${idea.points_awarded || 0})" type="button"><i class="fa-solid fa-gear"></i> Управление</button>` : '';
 
-        // Кнопки управления для автора или админа
+       
         let actionsHtml = '';
         const isAuthor = currentUser && currentUser.username === idea.author;
         if (isAdmin || (isAuthor && idea.status !== 'done')) {
@@ -448,8 +445,8 @@ function renderIdeas(containerId = 'ideas-container', hideAdmin = false) {
                     body: JSON.stringify({ type })
                 });
                 if (res.ok) {
-                    await fetchVotes(); // обновляем список моих голосов
-                    await fetchIdeas(); // обновляем карточки
+                    await fetchVotes(); 
+                    await fetchIdeas(); 
                 } else {
                     const data = await res.json();
                 showToast(data.error, 'error');
@@ -486,7 +483,7 @@ function setupIdeaSearch() {
     });
 }
 
-// Модалки
+
 let currentMode = 'login';
 function setupAuth() {
     const modal = document.getElementById('auth-modal');
@@ -615,7 +612,7 @@ function setupModals() {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // Валидация (красная рамка для пустых полей)
+        
         let isValid = true;
         form.querySelectorAll('[required]').forEach(input => {
             const err = input.parentElement.querySelector('.field-error');
@@ -629,7 +626,7 @@ function setupModals() {
             }
         });
         
-        if (!isValid) return; // Останавливаем отправку, если есть пустые поля
+        if (!isValid) return; 
 
         let imagesJSON = [];
         const files = document.getElementById('add-images').files;
@@ -676,7 +673,7 @@ function setupModals() {
         } catch(e) { console.error(e); showToast('Ошибка сети при сохранении', 'error'); }
     });
 
-    // Админ форма
+   
     document.getElementById('admin-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('admin-idea-id').value;
@@ -721,7 +718,7 @@ function updateCharCounters() {
     }
 }
 
-// Функции удаления и редактирования
+
 async function deleteItem(type, id) {
     if (!confirm('Вы уверены, что хотите удалить эту запись? Действие необратимо.')) return;
     try {
@@ -754,7 +751,7 @@ function editItem(type, id) {
     updateCharCounters();
 }
 
-// Профиль
+
 function setupProfile() {
     const tabs = document.querySelectorAll('.profile-tab');
     const contents = document.querySelectorAll('.profile-tab-content');
@@ -810,7 +807,7 @@ async function loadProfileStats() {
         document.getElementById('profile-name').textContent = data.user.username;
         document.getElementById('profile-points').textContent = data.user.points;
         
-        // Рендер FAQ (мои)
+        
         const faqC = document.getElementById('my-faqs-container');
         faqC.innerHTML = '';
         if(data.faqs.length === 0) {
@@ -830,10 +827,10 @@ async function loadProfileStats() {
              });
         }
 
-        // Рендер Идей (мои) - используем ту же функцию
+       
         renderIdeas('my-ideas-container', true);
 
-        // Рендер Баллов
+       
         const ptsC = document.getElementById('my-points-container');
         ptsC.innerHTML = '';
         if(data.history.length === 0) {

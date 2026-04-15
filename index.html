@@ -21,14 +21,12 @@
                 <a href="#store" class="nav-link disabled" title="В разработке"><i class="fa-solid fa-store"></i> Мерч-шоп</a>
             </nav>
             <div class="user-profile" id="user-profile">
-                <!-- Заполняется JS -->
                 <button class="btn btn-outline" id="btn-login-header">Войти / Регистрация</button>
             </div>
         </div>
     </header>
 
     <main class="main-content">
-        <!-- Секция Умного Поиска и FAQ -->
         <section id="faq" class="section-container active-section">
             <div class="section-header">
                 <h1>База знаний и FAQ</h1>
@@ -40,7 +38,6 @@
                     <i class="fa-solid fa-magnifying-glass search-icon"></i>
                     <input type="text" id="smart-search" placeholder="Задайте вопрос, например: Как оформить отпуск в 1С?">
                 </div>
-                <!-- Выпадающий список результатов -->
                 <div id="search-results" class="search-results hidden">
                     <ul id="results-list"></ul>
                     <div id="no-results" class="no-results hidden">
@@ -58,18 +55,15 @@
 
             <div class="popular-tags" id="faq-tags-container">
                 <span class="tag-title">Популярные темы:</span>
-                <!-- Заполняется из базы -->
             </div>
 
             <h3 id="faq-list-title" class="faq-header-title">Все вопросы</h3>
             <div class="faq-list">
                 <div id="faq-container">
-                    <!-- Заполняется из базы -->
                 </div>
             </div>
         </section>
 
-        <!-- Секция Идей -->
         <section id="ideas" class="section-container" style="display: none;">
             <div class="section-header display-flex">
                 <div>
@@ -102,11 +96,9 @@
             </div>
 
             <div class="ideas-feed" id="ideas-container">
-                <!-- Заполняется JS -->
             </div>
         </section>
 
-        <!-- Секция Профиля -->
         <section id="profile" class="section-container" style="display: none;">
             <div class="profile-header">
                 <div class="profile-avatar-large">
@@ -145,7 +137,6 @@
 
     </main>
 
-    <!-- Модальное окно авторизации/регистрации -->
     <div class="modal-overlay hidden" id="auth-modal">
         <div class="modal">
             <button class="close-modal" type="button"><i class="fa-solid fa-xmark"></i></button>
@@ -171,8 +162,6 @@
             </form>
         </div>
     </div>
-
-    <!-- Модальное окно добавления -->
     <div class="modal-overlay hidden" id="add-modal">
         <div class="modal">
             <button class="close-modal" type="button"><i class="fa-solid fa-xmark"></i></button>
@@ -212,7 +201,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно Админа для изменения статуса идеи -->
     <div class="modal-overlay hidden" id="admin-modal">
         <div class="modal">
             <button class="close-modal" type="button"><i class="fa-solid fa-xmark"></i></button>
@@ -239,7 +227,6 @@
         </div>
     </div>
 
-    <!-- Модальное окно "О портале" -->
     <div class="modal-overlay hidden" id="about-modal">
         <div class="modal">
             <button class="close-modal" type="button"><i class="fa-solid fa-xmark"></i></button>
@@ -253,7 +240,6 @@
         </div>
     </div>
 
-    <!-- Контейнер для уведомлений (Toasts) -->
     <div id="toast-container" class="toast-container"></div>
 
     <script src="script.js"></script>
