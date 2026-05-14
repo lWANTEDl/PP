@@ -121,6 +121,33 @@ const db = new sqlite3.Database('./database_v2.sqlite', (err) => {
                 }
             });
 
+            db.run(`CREATE TABLE IF NOT EXISTS shop_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                description TEXT,
+                price INTEGER,
+                category TEXT,
+                image_url TEXT
+            )`);
+            
+            db.run(`ALTER TABLE shop_items ADD COLUMN images TEXT`, (err) => {});
+
+            db.get("SELECT COUNT(*) as count FROM shop_items", (err, row) => {
+                if (row && row.count === 0) {
+                    const stmt = db.prepare("INSERT INTO shop_items (name, description, price, category, images) VALUES (?, ?, ?, ?, ?)");
+                    const items = [
+                        ["Футболка с логотипом", "Удобная хлопковая футболка с фирменным логотипом компании. Отлично подойдет для офиса и удаленки.", 500, "Одежда", JSON.stringify(["https://via.placeholder.com/300x200?text=T-Shirt"])],
+                        ["Худи 'Expert'", "Теплое худи для настоящих экспертов. Согреет холодными вечерами за написанием кода.", 1200, "Одежда", JSON.stringify(["https://via.placeholder.com/300x200?text=Hoodie"])],
+                        ["Кружка 'Code Coffee'", "Керамическая кружка, которая делает кофе вкуснее, а баги — менее заметными.", 300, "Сувениры", JSON.stringify(["https://via.placeholder.com/300x200?text=Mug"])],
+                        ["Рюкзак для ноутбука", "Вместительный рюкзак с отделением для 15-дюймового ноутбука. Множество карманов.", 2000, "Аксессуары", JSON.stringify(["https://via.placeholder.com/300x200?text=Backpack"])],
+                        ["Блокнот и ручка", "Набор для записи гениальных идей. Твердая обложка, 96 листов.", 150, "Канцелярия", JSON.stringify(["https://via.placeholder.com/300x200?text=Notebook"])],
+                        ["Наклейки на ноутбук", "Набор крутых ИТ-стикеров с мемами и логотипами для вашего ноутбука.", 50, "Канцелярия", JSON.stringify(["https://via.placeholder.com/300x200?text=Stickers"])]
+                    ];
+                    items.forEach(i => stmt.run(i));
+                    stmt.finalize();
+                }
+            });
+
             
             db.get("SELECT COUNT(*) as count FROM ideas", (err, row) => {
                 if (row.count === 0) {
@@ -382,7 +409,7 @@ app.post('/api/admin/ideas/:id', authenticateToken, (req, res) => {
                     db.run(`UPDATE users SET points = points + ? WHERE id = ?`, [diff, authorUser.id]);
                     const reasonText = diff > 0 ? `Начисление баллов: ${idea.title.substring(0, 30)}...` : `Корректировка баллов: ${idea.title.substring(0, 30)}...`;
                     db.run(`INSERT INTO points_history (user_id, amount, reason, date) VALUES (?, ?, ?, ?)`, 
-                           [authorUser.id, diff, reasonText, new Date().toISOString().split('T')[0]]);
+                           [authorUser.id, diff, reasonText, new Date().toISOString()]);
                 }
             });
         }
@@ -393,6 +420,112 @@ app.post('/api/admin/ideas/:id', authenticateToken, (req, res) => {
 app.get('/api/votes/:userId', authenticateToken, (req, res) => {
     db.all(`SELECT idea_id, vote_type FROM votes WHERE user_id = ?`, [req.user.id], (err, rows) => {
         res.json(rows || []);
+    });
+});
+
+app.get('/api/shop', (req, res) => {
+    db.all(`SELECT * FROM shop_items`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows.map(r => ({...r, images: r.images ? JSON.parse(r.images) : (r.image_url ? [r.image_url] : [])})));
+    });
+});
+
+app.post('/api/shop', authenticateToken, (req, res) => {
+    if (req.user.username !== 'admin') return res.status(403).json({ error: "Только для админа" });
+    const { name, description, price, category, images } = req.body;
+    db.run(`INSERT INTO shop_items (name, description, price, category, images) VALUES (?, ?, ?, ?, ?)`,
+        [name, description, price, category, JSON.stringify(images || [])], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID, message: "Товар добавлен" });
+    });
+});
+
+app.put('/api/shop/:id', authenticateToken, (req, res) => {
+    if (req.user.username !== 'admin') return res.status(403).json({ error: "Только для админа" });
+    const { name, description, price, category, images } = req.body;
+    db.run(`UPDATE shop_items SET name = ?, description = ?, price = ?, category = ?, images = ? WHERE id = ?`,
+        [name, description, price, category, JSON.stringify(images || []), req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Товар обновлен" });
+    });
+});
+
+app.delete('/api/shop/:id', authenticateToken, (req, res) => {
+    if (req.user.username !== 'admin') return res.status(403).json({ error: "Только для админа" });
+    db.run(`DELETE FROM shop_items WHERE id = ?`, [req.params.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Товар удален" });
+    });
+});
+
+app.get('/api/shop/orders', authenticateToken, (req, res) => {
+    db.all(`SELECT * FROM points_history WHERE user_id = ? AND (reason LIKE 'Покупка мерча:%' OR reason LIKE 'Отменен заказ:%') ORDER BY date DESC, id DESC`, [req.user.id], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+app.post('/api/shop/checkout', authenticateToken, (req, res) => {
+    const { cart } = req.body;
+    if (!cart || cart.length === 0) return res.status(400).json({ error: "Корзина пуста" });
+
+    const itemIds = cart.map(item => item.id);
+    const placeholders = itemIds.map(() => '?').join(',');
+
+    db.all(`SELECT * FROM shop_items WHERE id IN (${placeholders})`, itemIds, (err, items) => {
+        if (err || !items) return res.status(500).json({ error: "Ошибка базы данных" });
+
+        let totalPrice = 0;
+        let historyReasons = [];
+        
+        for (const cartItem of cart) {
+            const dbItem = items.find(i => i.id === cartItem.id);
+            if (dbItem) {
+                totalPrice += dbItem.price * cartItem.quantity;
+                historyReasons.push(`${dbItem.name} x${cartItem.quantity}`);
+            }
+        }
+
+        db.get(`SELECT points FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+            if (user.points < totalPrice) return res.status(400).json({ error: "Недостаточно баллов" });
+
+            db.run(`UPDATE users SET points = points - ? WHERE id = ?`, [totalPrice, req.user.id], (err) => {
+                if (err) return res.status(500).json({ error: "Ошибка при списании баллов" });
+                const reasonText = `Покупка мерча: ${historyReasons.join(', ')}`.substring(0, 100);
+                db.run(`INSERT INTO points_history (user_id, amount, reason, date) VALUES (?, ?, ?, ?)`,
+                    [req.user.id, -totalPrice, reasonText, new Date().toISOString()]);
+                res.json({ message: "Покупка успешна", remaining_points: user.points - totalPrice });
+            });
+        });
+    });
+});
+
+app.post('/api/shop/cancel-order/:id', authenticateToken, (req, res) => {
+    const historyId = req.params.id;
+    db.get(`SELECT * FROM points_history WHERE id = ? AND user_id = ?`, [historyId, req.user.id], (err, history) => {
+        if (err || !history) return res.status(404).json({ error: "Запись не найдена" });
+
+        if (!history.reason.startsWith('Покупка мерча:')) {
+            return res.status(400).json({ error: "Этот заказ нельзя отменить" });
+        }
+
+        const txDate = new Date(history.date);
+        if ((new Date() - txDate) > 5 * 60 * 1000) {
+            return res.status(400).json({ error: "Время для отмены заказа истекло (5 минут)" });
+        }
+
+        const refundAmount = Math.abs(history.amount);
+        const canceledReason = history.reason.replace('Покупка мерча:', 'Отменен заказ:');
+        
+        db.run(`UPDATE points_history SET reason = ? WHERE id = ?`, [canceledReason, historyId], (err) => {
+            db.run(`UPDATE users SET points = points + ? WHERE id = ?`, [refundAmount, req.user.id], (err) => {
+                db.run(`INSERT INTO points_history (user_id, amount, reason, date) VALUES (?, ?, ?, ?)`,
+                    [req.user.id, refundAmount, `Возврат средств: ${history.reason}`, new Date().toISOString()]);
+                db.get(`SELECT points FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+                    res.json({ message: "Заказ отменен, средства возвращены", remaining_points: user.points });
+                });
+            });
+        });
     });
 });
 
