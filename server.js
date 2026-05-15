@@ -459,10 +459,17 @@ app.delete('/api/shop/:id', authenticateToken, (req, res) => {
 });
 
 app.get('/api/shop/orders', authenticateToken, (req, res) => {
-    db.all(`SELECT * FROM points_history WHERE user_id = ? AND (reason LIKE 'Покупка мерча:%' OR reason LIKE 'Отменен заказ:%') ORDER BY date DESC, id DESC`, [req.user.id], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+    if (req.user.username === 'admin') {
+        db.all(`SELECT p.*, u.username as buyer_name FROM points_history p JOIN users u ON p.user_id = u.id WHERE (p.reason LIKE 'Покупка мерча:%' OR p.reason LIKE 'Отменен заказ:%') ORDER BY p.date DESC, p.id DESC`, [], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(rows);
+        });
+    } else {
+        db.all(`SELECT * FROM points_history WHERE user_id = ? AND (reason LIKE 'Покупка мерча:%' OR reason LIKE 'Отменен заказ:%') ORDER BY date DESC, id DESC`, [req.user.id], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(rows);
+        });
+    }
 });
 
 app.post('/api/shop/checkout', authenticateToken, (req, res) => {

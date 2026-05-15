@@ -16,7 +16,7 @@ let existingImages = [];
 let existingImagesShop = [];
 let shopItems = [];
 let currentShopCategory = 'all';
-let cart = [];
+let cart = JSON.parse(localStorage.getItem('cart')) || [];
 let currentShopImageIndex = 0;
 let currentShopItemImages = [];
 
@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetchFAQs();
     await fetchIdeas();
     await fetchShopItems();
+    updateCartBadge();
 
   
     document.addEventListener('input', (e) => {
@@ -1531,6 +1532,7 @@ function addToCart(itemId) {
     else cart.push({ id: itemId, quantity: 1, item });
     
     updateCartBadge();
+    localStorage.setItem('cart', JSON.stringify(cart));
     showToast('Товар добавлен в корзину');
     document.getElementById('shop-modal').classList.add('hidden');
 }
@@ -1652,6 +1654,7 @@ function changeCartItemQty(index, delta) {
     cart[index].quantity += delta;
     if (cart[index].quantity <= 0) cart.splice(index, 1);
     updateCartBadge();
+    localStorage.setItem('cart', JSON.stringify(cart));
     openCart();
 }
 
@@ -1677,6 +1680,7 @@ async function checkoutCart() {
             localStorage.setItem('user', JSON.stringify(currentUser));
             updateHeader();
             cart = [];
+            localStorage.removeItem('cart');
             updateCartBadge();
             document.getElementById('cart-modal').classList.add('hidden');
             showToast('Покупка успешна!', 'success');
@@ -1700,6 +1704,9 @@ async function openShopOrders() {
         const container = document.getElementById('shop-orders-container');
         container.innerHTML = '';
         
+        const modalTitle = document.querySelector('#shop-orders-modal h2');
+        if (modalTitle) modalTitle.textContent = currentUser && currentUser.username === 'admin' ? 'Все заказы' : 'Мои заказы';
+        
         if (orders.length === 0) {
             container.innerHTML = '<p style="text-align:center; color:var(--text-muted);">Вы еще ничего не заказывали.</p>';
         } else {
@@ -1720,11 +1727,15 @@ async function openShopOrders() {
                 
                 const isCanceled = o.reason.startsWith('Отменен заказ:');
                 const reasonText = o.reason.replace('Покупка мерча:', 'Заказ:').replace('Отменен заказ:', 'Отменен:');
+                const buyerInfo = o.buyer_name ? `<div style="font-size:12px; color:var(--text-muted, #64748b); margin-bottom: 4px;"><i class="fa-solid fa-user"></i> Покупатель: <strong>${o.buyer_name}</strong></div>` : '';
                 
                 container.innerHTML += `
                     <div style="padding:15px; margin-bottom:15px; border-radius:8px; border:1px solid var(--border-color, #e2e8f0); background: ${isCanceled ? '#fef2f2' : 'var(--bg-secondary, #f8fafc)'};">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                            <div style="font-weight:500; font-size:14px; margin-bottom:5px; color: ${isCanceled ? '#DC2626' : 'inherit'};">${reasonText}</div>
+                            <div>
+                                ${buyerInfo}
+                                <div style="font-weight:500; font-size:14px; margin-bottom:5px; color: ${isCanceled ? '#DC2626' : 'inherit'};">${reasonText}</div>
+                            </div>
                             <div style="font-weight:bold; color: ${isCanceled ? '#DC2626' : '#F59E0B'};">${Math.abs(o.amount)} баллов</div>
                         </div>
                         <div style="font-size:12px; color:var(--text-muted, #64748b);"><i class="fa-regular fa-clock"></i> ${displayDate}</div>
